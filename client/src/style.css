@@ -1,141 +1,219 @@
 :root {
-  --ink: #1d2b1f;
-  --paper: #f7f5ef;
-  --line: #d8d3c4;
-  --accent: #3f6e52;
-  --accent-light: #e7efe9;
-  --danger: #b3543f;
-  --font-display: "Georgia", "Times New Roman", serif;
-  --font-body: "Helvetica Neue", Arial, sans-serif;
+  --excel-green: #217346;
+  --excel-green-dark: #185c37;
+  --grid-line: #c7c7c7;
+  --header-bg: #f3f3f3;
+  --col-letter-bg: #e7e7e7;
+  --selected: #d6e4f0;
+  --ink: #1a1a1a;
+  --paper: #ffffff;
+  --bg: #e8e8e8;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-body);
+  font-family: "Calibri", "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
 }
 
-.app { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+.app {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 0 40px;
+}
 
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  border-bottom: 2px solid var(--ink);
-  padding-bottom: 14px;
-  margin-bottom: 24px;
+  gap: 10px;
+  background: var(--excel-green);
+  color: #fff;
+  padding: 12px 18px;
 }
 
 header h1 {
-  font-family: var(--font-display);
-  font-size: 28px;
-  letter-spacing: 0.5px;
+  font-size: 18px;
   margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .search {
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 14px;
-  width: 260px;
-  background: #fff;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  width: 240px;
 }
 
-.form-card {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 18px 20px;
-  margin-bottom: 24px;
+.sheet-wrap {
+  overflow: auto;
+  background: var(--paper);
+  border: 1px solid var(--grid-line);
+  margin: 0;
+  max-height: 75vh;
 }
 
-.form-card h2 {
-  font-family: var(--font-display);
-  font-size: 18px;
-  margin: 0 0 14px;
-  color: var(--accent);
+table.sheet {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-}
-
-.form-grid input {
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: var(--font-body);
-}
-
-.actions { margin-top: 14px; display: flex; gap: 10px; }
-
-button {
-  padding: 9px 18px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-button.primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-
-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
-
-th {
-  background: var(--accent-light);
-  color: var(--accent);
-  text-align: left;
-  padding: 10px 12px;
-  font-family: var(--font-display);
-  font-weight: normal;
-  border-bottom: 2px solid var(--ink);
+table.sheet th, table.sheet td {
+  border: 1px solid var(--grid-line);
+  padding: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-td {
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
+/* Column letter row (A, B, C...) */
+.col-header-row th {
+  background: var(--col-letter-bg);
+  color: #555;
+  font-weight: 600;
+  text-align: center;
+  height: 22px;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
-tr:hover td { background: #fcfbf7; }
+.col-header-row .corner {
+  background: var(--header-bg);
+  width: 44px;
+  position: sticky;
+  left: 0;
+  z-index: 4;
+}
 
-td a { color: var(--accent); text-decoration: none; }
-td a:hover { text-decoration: underline; }
+/* Field label header row */
+.field-header-row th {
+  background: var(--header-bg);
+  color: var(--ink);
+  font-weight: 700;
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 13px;
+  position: sticky;
+  top: 22px;
+  z-index: 3;
+}
 
-.row-actions { display: flex; gap: 6px; white-space: nowrap; }
-.row-actions button { padding: 4px 8px; }
+.field-header-row .row-num {
+  width: 44px;
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: var(--col-letter-bg);
+}
 
-.empty { text-align: center; color: #999; padding: 24px; }
+/* Row numbers */
+.row-num {
+  background: var(--col-letter-bg);
+  color: #555;
+  font-weight: 600;
+  text-align: center;
+  width: 44px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  font-size: 12px;
+}
+
+/* Data cells */
+.cell {
+  padding: 5px 10px;
+  cursor: cell;
+  min-width: 110px;
+  height: 28px;
+  position: relative;
+}
+
+.cell:hover {
+  outline: 1px solid #b7b7b7;
+  outline-offset: -1px;
+}
+
+.cell.active {
+  outline: 2px solid var(--excel-green);
+  outline-offset: -1px;
+  padding: 0;
+}
+
+.cell-input {
+  width: 100%;
+  height: 28px;
+  border: none;
+  outline: none;
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+
+.cell-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cell-content a {
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.placeholder {
+  color: #aaa;
+}
+
+.action-col {
+  width: 40px;
+  text-align: center;
+}
+
+.del-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px;
+  opacity: 0.5;
+}
+
+.del-btn:hover { opacity: 1; }
+
+.new-row td {
+  background: #fafafa;
+}
+
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+}
 
 footer {
-  margin-top: 16px;
-  font-size: 13px;
-  color: #777;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 18px;
+  background: var(--header-bg);
+  border: 1px solid var(--grid-line);
+  border-top: none;
+  font-size: 12px;
+  color: #555;
 }
 
 @media (max-width: 640px) {
   .search { width: 100%; }
+  header { flex-direction: column; align-items: stretch; }
+  footer { flex-direction: column; gap: 4px; }
 }
