@@ -12,24 +12,29 @@ export default function App() {
 
   const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
+  const logout = () => {
+    localStorage.removeItem("bs_token");
+    localStorage.removeItem("bs_email");
+    setToken(""); setEmail(""); setSheets([]); setActiveSheet(null);
+  };
+
   const loadSheets = useCallback(async () => {
     const res = await fetch("/api/sheets", { headers: authHeaders });
     if (res.status === 401) { logout(); return; }
     const data = await res.json();
     setSheets(data);
-    if (data.length && !activeSheet) setActiveSheet(data[0].id);
+    setActiveSheet(prev => prev ?? (data[0] ? data[0].id : null));
   }, [token]);
 
   useEffect(() => { if (token) loadSheets(); }, [token]);
 
-  // Ask for notification permission once logged in
   useEffect(() => {
     if (token && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, [token]);
 
-  // Poll all sheets' records every 30s for due reminders/alarms
+  // Poll for due reminders/alarms across all sheets
   useEffect(() => {
     if (!token) return;
     const check = async () => {
@@ -37,23 +42,23 @@ export default function App() {
         const sheetsRes = await fetch("/api/sheets", { headers: authHeaders });
         const sheetsData = await sheetsRes.json();
         for (const sheet of sheetsData) {
-          const recRes = await fetch(`/api/sheets/${sheet.id}/records`, { headers: authHeaders });
-          const records = await recRes.json();
+          const dataRes = await fetch(`/api/sheets/${sheet.id}/data`, { headers: authHeaders });
+          const { columns, rows: rowsList } = await dataRes.json();
+          const dateCols = columns.filter(c => /reminder|alarm/i.test(c.name));
           const now = Date.now();
-          for (const r of records) {
-            for (const field of ["reminder", "alarm"]) {
-              const val = r[field];
+          for (const row of rowsList) {
+            for (const col of dateCols) {
+              const val = row.cells[col.id];
               if (!val) continue;
               const t = new Date(val).getTime();
-              const key = `${r.id}-${field}`;
+              const key = `${row.id}-${col.id}`;
               if (t <= now && t > now - 5 * 60 * 1000 && !notified.current.has(key)) {
                 notified.current.add(key);
-                const title = field === "alarm" ? `⏰ Alarm: ${r.name}` : `🔔 Reminder: ${r.name}`;
-                const body = `${sheet.name} · ${r.company || ""} ${r.notes ? "— " + r.notes : ""}`;
+                const isAlarm = /alarm/i.test(col.name);
+                const title = isAlarm ? `⏰ ${col.name} due` : `🔔 ${col.name} due`;
+                const body = `${sheet.name} · row ${rowsList.indexOf(row) + 1}`;
                 if ("Notification" in window && Notification.permission === "granted") {
                   new Notification(title, { body });
-                } else {
-                  console.log(title, body);
                 }
               }
             }
@@ -73,18 +78,12 @@ export default function App() {
     setEmail(mail);
   };
 
-  const logout = () => {
-    localStorage.removeItem("bs_token");
-    localStorage.removeItem("bs_email");
-    setToken(""); setEmail(""); setSheets([]); setActiveSheet(null);
-  };
-
   const addSheet = async () => {
     const name = prompt("Sheet name:", `Sheet${sheets.length + 1}`);
     if (!name) return;
     const res = await fetch("/api/sheets", { method: "POST", headers: authHeaders, body: JSON.stringify({ name }) });
     const sheet = await res.json();
-    setSheets([...sheets, sheet]);
+    setSheets(s => [...s, sheet]);
     setActiveSheet(sheet.id);
   };
 
@@ -92,20 +91,41 @@ export default function App() {
     const name = prompt("Rename sheet:", sheet.name);
     if (!name || name === sheet.name) return;
     await fetch(`/api/sheets/${sheet.id}`, { method: "PUT", headers: authHeaders, body: JSON.stringify({ name }) });
-    setSheets(sheets.map(s => s.id === sheet.id ? { ...s, name } : s));
+    setSheets(s => s.map(x => x.id === sheet.id ? { ...x, name } : x));
   };
 
   const deleteSheet = async (sheet) => {
     if (sheets.length <= 1) return alert("Cannot delete the only sheet.");
-    if (!confirm(`Delete "${sheet.name}" and all its rows?`)) return;
+    if (!confirm(`Delete "${sheet.name}" and all its data?`)) return;
     const res = await fetch(`/api/sheets/${sheet.id}`, { method: "DELETE", headers: authHeaders });
     if (!res.ok) { const d = await res.json(); return alert(d.error); }
     const remaining = sheets.filter(s => s.id !== sheet.id);
     setSheets(remaining);
-    if (activeSheet === sheet.id) setActiveSheet(remaining[0]?.id);
+    if (activeSheet === sheet.id) setActiveSheet(remaining[0]?.id ?? null);
+  };
+
+  const shareSheet = async (sheet) => {
+    if (sheet.share_token) {
+      const url = `${window.location.origin}/share/${sheet.share_token}`;
+      if (confirm(`Share link:\n${url}\n\nCopy to clipboard? (Cancel to revoke the link instead)`)) {
+        navigator.clipboard?.writeText(url);
+      } else if (confirm("Revoke this share link? Anyone with the old link will lose access.")) {
+        await fetch(`/api/sheets/${sheet.id}/share`, { method: "DELETE", headers: authHeaders });
+        setSheets(s => s.map(x => x.id === sheet.id ? { ...x, share_token: null } : x));
+      }
+      return;
+    }
+    const res = await fetch(`/api/sheets/${sheet.id}/share`, { method: "POST", headers: authHeaders });
+    const data = await res.json();
+    setSheets(s => s.map(x => x.id === sheet.id ? { ...x, share_token: data.share_token } : x));
+    const url = `${window.location.origin}/share/${data.share_token}`;
+    navigator.clipboard?.writeText(url);
+    alert(`Read-only link created and copied:\n${url}`);
   };
 
   if (!token) return <Login onAuth={onAuth} />;
+
+  const current = sheets.find(s => s.id === activeSheet);
 
   return (
     <div className="app">
@@ -117,6 +137,15 @@ export default function App() {
           <button className="logout-btn" onClick={logout}>Log out</button>
         </div>
       </header>
+
+      {current && (
+        <div className="share-bar">
+          <button onClick={() => shareSheet(current)}>
+            {current.share_token ? "🔗 Manage share link" : "🔗 Get share link"}
+          </button>
+          {current.share_token && <span className="share-active">Public link active</span>}
+        </div>
+      )}
 
       {activeSheet && <Sheet token={token} sheetId={activeSheet} search={search} />}
 
